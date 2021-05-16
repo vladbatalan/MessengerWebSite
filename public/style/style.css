@@ -1,0 +1,96 @@
+/*
+Color pallete:
+Message-box-bk:  #262626
+Side-bar: #333333
+Nav: #006622
+Footer: #0d0d0d
+*/
+
+html, head, body{
+    background-color: black;
+    padding: 0px;
+    margin: 0px;
+    color: #AAABB8;
+}
+
+nav{
+    background-color: #006622;
+    height: 30px;
+    padding: 10px;
+}
+
+.side-bar{
+    background-color: #333333;
+    float:left;
+    width: 200px;
+    bottom: 30px;
+    top: 50px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+
+    z-index: 1;
+}
+
+.main-container{
+    background-color: #25274D;
+    float: left;
+
+    width: 70%;
+    height: 70%;
+
+    margin-left: 50px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    z-index: 1;
+}
+
+.message-container{
+    background-color: #262626;
+    height: 90%;
+    overflow-y: scroll;
+
+    padding: 20px;
+}
+
+.write-container{
+    background-color: #262626;
+    height: 10%;
+    bottom: 0px;
+
+    padding: 20px;
+}
+.write-container textarea{
+    background-color: black;
+    float:left;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    width: 70%;
+    height: 50px;
+    padding: 10px;
+    resize: none;
+
+}
+
+.write-container button{
+    background-color: black;
+    float: left;
+    color: white;
+    margin-left: 20px;
+    border-radius: 20px;
+    padding: 20px;
+    
+}
+
+.clear-both{
+    clear: both;
+}
+
+footer{
+    background-color: #133a20;
+    position: absolute;
+    width:100%;
+    clear:both;
+    bottom: 0px;
+    height: 30px;
+}
