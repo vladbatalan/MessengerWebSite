@@ -2,6 +2,7 @@ const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
 const bodyParser = require('body-parser')
 const session = require('express-session');
+var path = require('path');
 const fs = require('fs');
 const url = require('url');
 
@@ -9,6 +10,8 @@ const url = require('url');
 const app = express();
 
 const port = 6789;
+
+app.use(express.static(__dirname + '/static'));
 
 // directorul 'views' va conține fișierele .ejs (html + js executat la server)
 app.set('view engine', 'ejs');
@@ -22,24 +25,22 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 // utilizare variabile session
 app.use(session({
-    secret:'keyboard cat',
-    resave:false,
+    secret:'ssshhhhhh',
+    resave:true,
     saveUninitialized:false,
     cookie:{
-        maxAge: null
+        expires: 50000 * 1000
     }})
 );
 
 
 // the middleware to set the user script in the left
 function userloggedMiddleware(req, res, next){
-    console.log("Userlogged Middleware");
-    if(!req.session.views){
-        req.session.views = {};
-    }
-    if(req.session.views['userlogged'])
+    //console.log("Userlogged Middleware");
+    var sess = req.session;
+    if(sess.userlogged)
     {
-        res.locals['userlogged'] = req.session.views['userlogged'];
+        res.locals['userlogged'] = sess.userlogged;
     }
 
     next();
@@ -51,28 +52,46 @@ app.get('/', (req, res) => {
 });
 
 app.get('/chat', (req, res) => {
-    res.render("chat");
+    var sess = req.session;
+    var currentUser = null;
+    if(sess.userlogged){
+        currentUser = sess.userlogged;
+    }
+
+    if(currentUser == null)
+    {
+        res.redirect("/login?error=not-logged");
+    }
+    else{
+        res.render("chat");
+    }
 });
 
 app.get('/login', (req, res) => {
     // delogare - delete user session if exists
+    var sess = req.session;
     var errorParam = url.parse(req.url, true).query;
-    if(req.session.views){
-        delete req.session.views['userlogged'];
+    if(sess.userlogged){
+        delete req.session.userlogged;
     }
 
     var error = "";
-    if(errorParam['error'] && errorParam['error'] == "wrong-credentials")
+    if(errorParam['error'])
     {
-        error = "Nume utilizator sau parola invalide!";
+        if(errorParam['error'] == "wrong-credentials"){
+            error = "Nume utilizator sau parola invalide!";
+        }
+        if(errorParam['error'] == "not-logged"){
+            error = "Trebuie sa fiti logat ca sa aveti acces la chat!";
+        }
     }
-
     res.render("login", {"error": error});
 });
 
 let allUsers = JSON.parse(fs.readFileSync("users.json"));
 app.post('/process-login', (req, res) => {
     let userlogged = null;
+    var sess = req.session;
     allUsers.forEach(user => {
         if(req.body['username'] == user.username && req.body['password'] == user.password){
             delete user['password'];
@@ -82,10 +101,7 @@ app.post('/process-login', (req, res) => {
     });
     if(userlogged != null){
         // set the userlogged session
-        if(!req.session.views){
-            req.session.views = {};
-        }
-        req.session.views['userlogged'] = userlogged;
+        sess.userlogged = userlogged;
 
         res.redirect("/");
     }
