@@ -9,11 +9,22 @@
     </head>
     <body>
         <nav>
-            <a> Home </a>
-            <a> Users </a>
-            <a> Login </a>
-            <a> Account </a>
-            <a> Chat </a>
+            <div class="left-alligned">
+                <a href="/"> Home </a>
+                <a href="/"> Users </a>
+                <a href="/"> Account </a>
+                <a href="/chat"> Chat </a>
+            </div>
+
+            <div class="right-alligned">
+                <% if(locals.userlogged){ %>
+                    <a href="/user-profile"><%= userlogged.username %></a>
+                    <a href="/login">Logout</a>
+                    <!-- <a href="/" class="user-icon" ></a> -->
+                <% } else { %>
+                    <a href="/login"> Login </a>       
+                <% } %>
+            </div>
         </nav>
         <main>
             <%- body -%>
