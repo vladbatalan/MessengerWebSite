@@ -2,10 +2,118 @@ const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
 const bodyParser = require('body-parser')
 const session = require('express-session');
+const oracledb = require('oracledb');
+oracledb.autoCommit = true;
+oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
+
 var path = require('path');
 const fs = require('fs');
 const url = require('url');
+let allUsers = JSON.parse(fs.readFileSync("users.json"));
 
+const oracleCredentials = {
+    user:           "pw_user",
+    password:       "pw_pass",
+    connectString:  "localhost:1521/xe",
+    database:       "pw_database"
+}
+
+var connection;
+// connect to database function
+async function connectToDb(){
+    try{
+        connection = await oracledb.getConnection(oracleCredentials);
+        console.log("Successfully connected");
+    } catch(err){
+        console.log("NOT connected");
+    }finally{
+        if(connection){
+            return connection;
+        }
+    }
+}
+async function createTables(){
+    let conn = await connectToDb();
+    try{
+        await conn.execute(
+            `CREATE SEQUENCE mess_seq START WITH 1`
+        );
+        await conn.execute(
+            `CREATE TABLE messages (
+            id_message number,
+            id_sender number NOT NULL,
+            id_receiver number NOT NULL,
+            message_content varchar2(512),
+            message_timestamp timestamp NOT NULL,
+            primary key (id_message))`
+        );
+
+        await conn.execute(
+            `CREATE OR REPLACE TRIGGER messages_on_insert
+                BEFORE INSERT ON messages
+                FOR EACH ROW
+            BEGIN
+                SELECT mess_seq.nextval
+                INTO :new.id_message
+                FROM dual;
+            END;`
+        );
+        await conn.execute(
+            `CREATE TABLE users (
+            id_user number,
+            last_active timestamp,
+            primary key (id_user))`
+        );
+    }
+    catch (err){
+        console.log(err);
+    }
+    finally{
+        if(conn){
+            try { await conn.close();}
+            catch (err) {console.log(err);}
+        }
+    }
+}
+
+async function firstInsertIntoDatabase(){
+    var conn = await connectToDb();
+    try{
+        let result = await conn.execute(
+            `SELECT COUNT(*) as cnt FROM users`
+        );
+        if(result.rows[0].CNT == 0){
+            // inserez utilizatorii
+            allUsers.forEach(async function(user){
+                try{
+                    await conn.execute(
+                        `INSERT INTO users 
+                        VALUES(
+                            :0,
+                            null
+                        )`, [user.user_id]
+                    );
+                }
+                catch (exc){
+                    console.log(user.user_id + " has got an exception! " + exc);
+                }
+            });
+        }
+    }
+    catch (err){
+        console.log(err);
+    }
+    finally{
+        if(conn){
+            try { await conn.close();}
+            catch (err) {console.log(err);}
+        }
+    }
+}
+
+// use function to create tables for the first time
+// firstInsertIntoDatabase();
+// createTables();
 
 const app = express();
 
@@ -32,7 +140,7 @@ app.use(session({
         expires: 50000 * 1000
     }})
 );
-
+app.use(userloggedMiddleware);
 
 // the middleware to set the user script in the left
 function userloggedMiddleware(req, res, next){
@@ -42,31 +150,92 @@ function userloggedMiddleware(req, res, next){
     {
         res.locals['userlogged'] = sess.userlogged;
     }
-
     next();
 }
-app.use(userloggedMiddleware);
 
+
+async function retreiveMessagesFromDb(sender, receiver){
+    var chat_messages = [];
+    
+    // voi face un select pentru a avea toate mesajele dintre cei 2 in ordine
+    let sql = "SELECT id_sender, id_receiver, message_content, TO_CHAR(message_timestamp, 'HH24:MI - DD/MM/YYYY') AS timestamp FROM messages WHERE (id_sender = :0 AND id_receiver = :1) OR (id_sender = :1 AND id_receiver = :0) ORDER BY message_timestamp ASC";
+
+    // selectez randurile
+    let select_messages = (await connection.execute(sql, [sender, receiver])).rows;
+
+    // le salvez in chat_messages
+    select_messages.forEach(msg => {
+        chat_messages.push(
+            {
+                "id_sender" : msg.ID_SENDER,
+                "id_receiver" : msg.ID_RECEIVER,
+                "message_content" : msg.MESSAGE_CONTENT,
+                "timestamp" : msg.TIMESTAMP
+            }
+        );
+    });
+
+    return chat_messages;
+}
+
+
+// #######  Index page is loaded here #######
 app.get('/', (req, res) => {
     res.render("index");
 });
 
-app.get('/chat', (req, res) => {
+// #######  Chat page is loaded here #######
+app.get('/chat', async function(req, res){
     var sess = req.session;
     var currentUser = null;
     if(sess.userlogged){
         currentUser = sess.userlogged;
     }
-
     if(currentUser == null)
     {
         res.redirect("/login?error=not-logged");
     }
     else{
-        res.render("chat");
+        // display all other users on the bar
+        var otherUsersList = [];
+        allUsers.forEach((user) => {
+            if(user.user_id != currentUser.user_id)
+                otherUsersList.push(user);
+        });
+
+        // read the current chat with the user
+        var crrOther = req.query['user'];
+        if(crrOther){
+            // select from the list the user
+            let found = false;
+            allUsers.forEach( (user) => {
+                if(user.username == crrOther){
+                    crrOther = user;
+                    found = true;
+                    return;
+                }
+            });
+
+            // daca nu am gasit user
+            if(found == false){
+                crrOther = null;
+            }
+        }
+        else{
+            crrOther = null;
+        }
+
+        // se va constitui lista de mesaje transmise intre cei doi utilizatori
+        var chat_messages = [];
+        if(crrOther != null){
+            chat_messages = await retreiveMessagesFromDb(currentUser.user_id, crrOther.user_id);
+        }
+        res.statusCode = 200;
+        res.render("chat", {"otherUsers": otherUsersList, "currentOther": crrOther, "chatMessages": chat_messages});
     }
 });
 
+// #######  Login page is loaded  #######
 app.get('/login', (req, res) => {
     // delogare - delete user session if exists
     var sess = req.session;
@@ -88,13 +257,19 @@ app.get('/login', (req, res) => {
     res.render("login", {"error": error});
 });
 
-let allUsers = JSON.parse(fs.readFileSync("users.json"));
+// #######  Login user is processed  #######
 app.post('/process-login', (req, res) => {
     let userlogged = null;
     var sess = req.session;
+    
+    // se sterge conectiunea de la baza de date
+    if( connection ){
+        connection.close();
+        delete connection;
+    }
+
     allUsers.forEach(user => {
         if(req.body['username'] == user.username && req.body['password'] == user.password){
-            delete user['password'];
             userlogged = user;
             return;
         }
@@ -103,11 +278,75 @@ app.post('/process-login', (req, res) => {
         // set the userlogged session
         sess.userlogged = userlogged;
 
+        // connect to the database
+        connection = connectToDb();
         res.redirect("/");
     }
     else{
         res.redirect("/login?error=wrong-credentials");
     }
 });
+
+
+// #######  An message is processed and inserted to database here #######
+app.post('/insert-message', async function(req, res){
+    var message_sender = req.body["sender"];
+    var message_receiver = req.body["receiver"];
+    var message_content = req.body["content"];
+
+    // filtrez mesajul
+    message_content = message_content.trim();
+    
+    //console.log("Got from ajax client(" + message_sender + ", " + message_receiver + ", \"" + message_content + "\")");
+
+    var select_user_sql = "SELECT COUNT(*) AS cnt FROM users WHERE id_user = :0";
+    var insert_message_sql = "INSERT INTO messages VALUES(null, :0, :1, :2, CURRENT_TIMESTAMP)";
+    var users_are_ok = false;
+
+    // fac un select dupa sender si receiver, ele trebuie sa existe in baza de date
+    try{
+        let result_user1 = (await connection.execute(select_user_sql,[message_sender])).rows[0].CNT;
+        let result_user2 = (await connection.execute(select_user_sql,[message_receiver])).rows[0].CNT;
+
+        if(result_user1 == 1 && result_user2 == 1)
+        {
+            users_are_ok = true;
+        }
+    }
+    catch(err){
+        console.log(err);
+    }
+
+    // verificare itemi transmisi
+    if(message_content != "" && users_are_ok){
+        try{
+            //console.log("Executing insert(" + message_sender + ", " + message_receiver + ", \"" + message_content + "\")");
+            connection.execute(insert_message_sql, [message_sender, message_receiver, message_content]);
+            res.statusCode = 200;
+            console.log("Status was set to 200");
+        }
+        catch(err)
+        {
+            res.statusCode = 400;
+            console.log(err);
+        }
+    }
+});
+
+// #####  Through this method, the messages between 2 can be returned  #####
+app.get('/select-messages', async function(req, res){
+    var sender = req.body["sender"];
+    var receiver = req.body["receiver"];
+
+    // voi face o interogare sql ca sa extrag mesajele
+    var chat_messages = await retreiveMessagesFromDb(sender, receiver);
+    console.log("retreived messages with select");
+    console.log(chat_messages);
+
+    // trimit aceste mesaje inapoi
+    res.send(JSON.stringify(chat_messages));
+});
+
+
 
 app.listen(port, () => console.log(`Serverul rulează la adresa http://localhost:`));

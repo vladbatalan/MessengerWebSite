@@ -1,35 +1,60 @@
 <aside class="side-bar">
-    <div class="user-list-bar" onload="setScrollOnBottom()" id="user-list-bar">
-        <a href="/chat?user=vladbatalan">
-            <p>vladbatalan</p>
-        </a>
-        <a href="/chat?user=marcelinpetrisor">
-            <p>marcelinpetrisor</p>
-        </a>
-        <a href="/chat?user=adrianalexandrescu">
-            <p>adrianalexandrescu</p>
-        </a>
-        <a href="/chat?user=alexilioi">
-            <p>alexilioi</p>
-        </a>
+    <div class="user-list-bar" id="user-list-bar">
+        <% otherUsers.forEach((other) => { %>
+            
+            <a href="/chat?user=<%= other.username %>">
+                <p><%= other.username %></p>
+            </a>
+
+        <% }); %>
     </div>
 </aside>
 
 <section class="chat">
-    
-    <div class="message-container">
-        <div class="other-message">Salut. Ce faci?</div>
-        <div class="other-message">Esti gata sa ne apucam de treaba?</div>
-        <div class="user-message">Sincer ... Mi-e putin lene. Is si mahmur ... </div>
-        <div class="user-message">Putem lasa pe tura urmatoare?</div>
-        <div class="other-message">In ritmul asta ... nu mai terminam proiectul ...</div>
-        <div class="other-message">Well ... Merge o schaworma</div>
+    <div class="message-user-profile">
+        <% 
+        var writeEnabled = "";
+        if(currentOther) { %>
+            <%= currentOther.username %> <span> - active now</span>
+        <% 
+        } 
+        else {
+            currentOther = {"user_id": -1};
+            writeEnabled = "disabled";
+        } 
+        %>
+    </div>
+    <div class="message-container" id="message-container">
+        <% 
+            // pentru fiecare mesaj din chat, daca are ca sender userlogged.user_id
+            chatMessages.forEach(msg => {
+                // daca mesajul este al userului curent
+                if(msg.id_sender == userlogged.user_id){
+                %>
+                    <div class="user-message">
+                        <p><%= msg.message_content %></p>
+                        <span class="message-date"><%= msg.timestamp %></span>
+                    </div>
+                <%
+                }
+                else{
+                    // mesajul este al celuilalt user
+                    %>
+                    <div class="other-message">
+                        <p><%= msg.message_content %></p>
+                        <span class="message-date"><%= msg.timestamp %></span>
+                    </div>
+                    <%
+                }
+            });
+        %>
     </div>
 
     <div class="write-container">
-        <textarea>Here you write text</textarea>
-        <button>Send message</button>
+        <textarea id="txtMessage" <%= writeEnabled %> placeholder="Write here some text ..."></textarea>
+        <button <%= writeEnabled %> onclick="sendMessage(<%= userlogged.user_id %>, <%= currentOther.user_id %>)" id="btnSend">Send message</button>
         <div class="clear-both"></div>
     </div>
 
 </section>
+<script> chatOnloadFunction();</script>
