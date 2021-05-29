@@ -9,6 +9,7 @@ oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 var path = require('path');
 const fs = require('fs');
 const url = require('url');
+const { connect } = require('http2');
 let allUsers = JSON.parse(fs.readFileSync("users.json"));
 
 const oracleCredentials = {
@@ -350,6 +351,44 @@ app.get('/select-messages', async function(req, res){
 
     // trimit aceste mesaje inapoi
     res.send(JSON.stringify(chat_messages));
+});
+
+// #####  Get users and show if active #####
+app.get('/users-active-status', async function(req, res){
+    var users = [];
+
+    var sql = "SELECT id_user, TO_CHAR(last_active, 'HH24:MI - DD/MM/YYYY') as last_time, "+
+        "(" + 
+            "extract(hour FROM (CURRENT_TIMESTAMP - last_active)) * 60 + "+ 
+            "extract(minute FROM (CURRENT_TIMESTAMP - last_active))" +
+        ") AS minutes_diff FROM users";
+
+    var result = (await connection.execute(sql)).rows;
+
+    result.forEach((user) => {
+        users.push({
+            "id_user": user.ID_USER,
+            "last_time": user.LAST_TIME,
+            "minutes_diff": user.MINUTES_DIFF
+        });
+    })
+
+    res.send(JSON.stringify(users));
+});
+
+/* ###### Keep alive user ######
+    - this function updates the timestamp of the user
+    - it shows when it was active last time */
+app.put('/keep-alive', async function(req, res){
+    // get the user id
+    var user_id = req.body['user_id'];
+
+    // UPDATE database with the current timestamp
+    var sql = "UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id_user = :0";
+    await connection.execute(sql, [user_id]);
+
+    res.statusCode = 200;
+    res.send();
 });
 
 
