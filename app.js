@@ -163,6 +163,9 @@ async function retreiveMessagesFromDb(sender, receiver){
     // selectez randurile
     let select_messages = (await connection.execute(sql, [sender, receiver])).rows;
 
+    // console.log("Slected messages for (" + sender +", " + receiver + ")");
+    // console.log(select_messages);
+
     // le salvez in chat_messages
     select_messages.forEach(msg => {
         chat_messages.push(
@@ -321,27 +324,29 @@ app.post('/insert-message', async function(req, res){
     if(message_content != "" && users_are_ok){
         try{
             //console.log("Executing insert(" + message_sender + ", " + message_receiver + ", \"" + message_content + "\")");
-            connection.execute(insert_message_sql, [message_sender, message_receiver, message_content]);
+            await connection.execute(insert_message_sql, [message_sender, message_receiver, message_content]);
             res.statusCode = 200;
-            console.log("Status was set to 200");
+            // console.log("Status was set to 200");
+            res.send("OK");
         }
         catch(err)
         {
             res.statusCode = 400;
             console.log(err);
+            res.send("Database error");
         }
     }
 });
 
 // #####  Through this method, the messages between 2 can be returned  #####
 app.get('/select-messages', async function(req, res){
-    var sender = req.body["sender"];
-    var receiver = req.body["receiver"];
+    var sender = req.query["sender"];
+    var receiver = req.query["receiver"];
 
     // voi face o interogare sql ca sa extrag mesajele
     var chat_messages = await retreiveMessagesFromDb(sender, receiver);
-    console.log("retreived messages with select");
-    console.log(chat_messages);
+    //console.log("retreived messages with select");
+    //console.log(chat_messages);
 
     // trimit aceste mesaje inapoi
     res.send(JSON.stringify(chat_messages));

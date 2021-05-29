@@ -18,6 +18,7 @@ function chatOnloadFunction(){
 }
 
 
+
 function reloadMessages(sender, receiver){
     // preiau containerul care trebuie dat refresh
     var messageContainer = document.getElementById("message-container");
@@ -31,18 +32,17 @@ function reloadMessages(sender, receiver){
         if (this.readyState == 4 && this.status == 200) {
 
             // pentru fiecare mesaj trimis inapoi
-            var rezultat = this.response;
-
-            console.log(rezultat);
+            var rezultat = JSON.parse(this.response);
             
             // daca este necesar sa facem update
-            if(rezultat.length != nr_mesaje){
+            if(rezultat.length > nr_mesaje){
 
                 let content = "";
-
                 // pt fiecare mesaj din raspuns
                 for(let index = 0; index < rezultat.length; index ++){
                     let msg = rezultat[index];
+
+                    // console.log(msg);
 
                     // div content of message
                     content += "<div class='";
@@ -63,14 +63,15 @@ function reloadMessages(sender, receiver){
                 }
 
                 messageContainer.innerHTML = content;
+                messageContainer.scrollTop = messageContainer.scrollHeight;
             }
         }
     };
-    xmlhttp.open("GET", "/select-messages");
+    xmlhttp.open("GET", "/select-messages?sender=" + sender +"&receiver=" + receiver);
     xmlhttp.setRequestHeader("Content-Type", "application/json");
-    xmlhttp.send(JSON.stringify({sender: sender, receiver: receiver}));
-
+    xmlhttp.send();
 }
+
 
 function sendMessage(sender, receiver){
     var txtMessage = document.getElementById("txtMessage");
@@ -80,7 +81,9 @@ function sendMessage(sender, receiver){
     // sent the message to oracle database
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
-        reloadMessages(sender, receiver);
+        if (this.readyState == 4 && this.status == 200) {
+            reloadMessages(sender, receiver);
+        }
     };
     xmlhttp.open("POST", "/insert-message");
     xmlhttp.setRequestHeader("Content-Type", "application/json");
