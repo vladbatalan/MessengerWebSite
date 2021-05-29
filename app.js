@@ -172,7 +172,7 @@ async function retreiveUsersFromDb(){
         });
     })
 
-    console.log(users);
+    // console.log(users);
     return users;
 }
 
@@ -244,7 +244,13 @@ app.get('/chat', async function(req, res){
             let found = false;
             allUsers.forEach( (user) => {
                 if(user.username == crrOther){
-                    crrOther = user;
+                    var activeIndex = activeUserList.findIndex((element) => element.id_user == user.user_id);
+                    crrOther = {
+                        "user_id": user.user_id,
+                        "username": user.username,
+                        "last_active": activeUserList[activeIndex].last_active,
+                        "minutes_diff": activeUserList[activeIndex].minutes_diff
+                    };
                     found = true;
                     return;
                 }
@@ -386,7 +392,6 @@ app.get('/select-messages', async function(req, res){
 // #####  Get users and show if active #####
 app.get('/users-active-status', async function(req, res){
     var users = await retreiveUsersFromDb();
-
     res.send(JSON.stringify(users));
 });
 
@@ -399,10 +404,15 @@ app.put('/keep-alive', async function(req, res){
 
     // UPDATE database with the current timestamp
     var sql = "UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id_user = :0";
-    await connection.execute(sql, [user_id]);
-
-    res.statusCode = 200;
-    res.send();
+    if(connection != null){
+        await connection.execute(sql, [user_id]);
+        res.statusCode = 200;
+        res.send();
+    }
+    else{
+        res.statusCode = 400;
+        res.send();
+    }
 });
 
 

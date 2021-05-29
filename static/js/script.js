@@ -15,8 +15,27 @@ function chatOnloadFunction(){
         document.getElementById("btnSend").click();
     }
     });
+
+    // keep alive to send from user periodically
+    var crrUserId = document.getElementById("crr-user-id").value;
+
+    // apply keep alive
+    keepAlive(crrUserId);
+
+    // call keep alive la fiecare minut
+    setInterval(keepAlive, 1000 * 60);
+
+    // facem reload la mesaje la fiecare 10 secunde
 }
 
+function keepAlive(user_id){
+    if(user_id != -1){
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("PUT", "/keep-alive");
+        xmlhttp.setRequestHeader("Content-Type", "application/json");
+        xmlhttp.send(JSON.stringify({"user_id": user_id}));
+    }
+}
 
 
 function reloadMessages(sender, receiver){

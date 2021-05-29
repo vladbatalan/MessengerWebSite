@@ -20,9 +20,11 @@
                 <% if(locals.userlogged){ %>
                     <a href="/user-profile"><%= userlogged.username %></a>
                     <a href="/login">Logout</a>
+                    <input type="hidden" id="crr-user-id" value="<%= userlogged.user_id %>" />
                     <!-- <a href="/" class="user-icon" ></a> -->
                 <% } else { %>
-                    <a href="/login"> Login </a>       
+                    <a href="/login"> Login </a>   
+                    <input type="hidden" id="crr-user-id" value="-1" />    
                 <% } %>
             </div>
         </nav>

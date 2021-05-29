@@ -20,7 +20,12 @@
         <% 
         var writeEnabled = "";
         if(currentOther) { %>
-            <%= currentOther.username %> <span> - active now</span>
+            <%= currentOther.username %> 
+            <% if(currentOther.minutes_diff === null || currentOther.minutes_diff >= 5) { %>
+                <span> - inactive </span>
+            <% } else { %>
+                <span> - active now </span>
+            <% } %>
         <% 
         } 
         else {
