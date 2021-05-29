@@ -154,6 +154,27 @@ function userloggedMiddleware(req, res, next){
     next();
 }
 
+async function retreiveUsersFromDb(){
+    var users = [];
+    var sql = "SELECT id_user, TO_CHAR(last_active, 'HH24:MI - DD/MM/YYYY') as last_time, "+
+        "(" + 
+            "extract(hour FROM (CURRENT_TIMESTAMP - last_active)) * 60 + "+ 
+            "extract(minute FROM (CURRENT_TIMESTAMP - last_active))" +
+        ") AS minutes_diff FROM users";
+
+    var result = (await connection.execute(sql)).rows;
+
+    result.forEach((user) => {
+        users.push({
+            "id_user": user.ID_USER,
+            "last_time": user.LAST_TIME,
+            "minutes_diff": user.MINUTES_DIFF
+        });
+    })
+
+    console.log(users);
+    return users;
+}
 
 async function retreiveMessagesFromDb(sender, receiver){
     var chat_messages = [];
@@ -202,9 +223,18 @@ app.get('/chat', async function(req, res){
     else{
         // display all other users on the bar
         var otherUsersList = [];
+        var activeUserList = await retreiveUsersFromDb();
         allUsers.forEach((user) => {
-            if(user.user_id != currentUser.user_id)
-                otherUsersList.push(user);
+            if(user.user_id != currentUser.user_id){
+                // find the active user data from the list
+                var activeIndex = activeUserList.findIndex((element) => element.id_user == user.user_id);
+                otherUsersList.push({
+                    "user_id": user.user_id,
+                    "username": user.username,
+                    "last_active": activeUserList[activeIndex].last_active,
+                    "minutes_diff": activeUserList[activeIndex].minutes_diff
+                });
+            }
         });
 
         // read the current chat with the user
@@ -355,23 +385,7 @@ app.get('/select-messages', async function(req, res){
 
 // #####  Get users and show if active #####
 app.get('/users-active-status', async function(req, res){
-    var users = [];
-
-    var sql = "SELECT id_user, TO_CHAR(last_active, 'HH24:MI - DD/MM/YYYY') as last_time, "+
-        "(" + 
-            "extract(hour FROM (CURRENT_TIMESTAMP - last_active)) * 60 + "+ 
-            "extract(minute FROM (CURRENT_TIMESTAMP - last_active))" +
-        ") AS minutes_diff FROM users";
-
-    var result = (await connection.execute(sql)).rows;
-
-    result.forEach((user) => {
-        users.push({
-            "id_user": user.ID_USER,
-            "last_time": user.LAST_TIME,
-            "minutes_diff": user.MINUTES_DIFF
-        });
-    })
+    var users = await retreiveUsersFromDb();
 
     res.send(JSON.stringify(users));
 });

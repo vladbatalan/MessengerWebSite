@@ -3,9 +3,14 @@
         <% otherUsers.forEach((other) => { %>
             
             <a href="/chat?user=<%= other.username %>">
-                <p><%= other.username %></p>
+                    <% if(other.minutes_diff === null || other.minutes_diff >= 5) { %>
+                        <span class="inactive-user"></span>
+                    <% } else { %>
+                        <span class="active-user"></span>
+                    <% } %>
+                    <%= other.username %>
             </a>
-            
+
         <% }); %>
     </div>
 </aside>
