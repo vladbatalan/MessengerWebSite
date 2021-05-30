@@ -213,3 +213,14 @@ async function updateTimestamp(user_id){
         catch (err) {console.log(err);}
     }
 }
+
+module.exports = {
+    connectToDb, 
+    createTables, 
+    firstInsertIntoDatabase, 
+    retreiveUsersFromDb, 
+    retreiveMessagesFromDb,
+    userExists,
+    insertMessage,
+    updateTimestamp
+};
