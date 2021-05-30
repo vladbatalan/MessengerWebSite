@@ -26,6 +26,22 @@ function chatOnloadFunction(){
     setInterval(keepAlive, 1000 * 60);
 
     // facem reload la mesaje la fiecare 10 secunde
+    setInterval(refreshPage, 1000 * 10);
+}
+
+function refreshPage(){
+    // get the current user id and the other id
+    let user_id = document.getElementById("crr-user-id");
+    let other_id = document.getElementById("other-id");
+
+    // if elements are found
+    if(user_id && other_id){
+        user_id = user_id.value;
+        other_id = other_id.value;
+        reloadMessages(user_id, other_id);
+
+        // reload left page
+    }
 }
 
 function keepAlive(user_id){

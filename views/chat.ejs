@@ -21,6 +21,9 @@
         var writeEnabled = "";
         if(currentOther) { %>
             <%= currentOther.username %> 
+
+            <input type="hidden" id="other-id" value="<%= currentOther.user_id %>"/>
+
             <% if(currentOther.minutes_diff === null || currentOther.minutes_diff >= 5) { %>
                 <span> - inactive </span>
             <% } else { %>
@@ -31,6 +34,9 @@
         else {
             currentOther = {"user_id": -1};
             writeEnabled = "disabled";
+            %>
+                <input type="hidden" id="other-id" value="-1"/>
+            <%
         } 
         %>
     </div>
